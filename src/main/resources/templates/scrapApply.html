@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>报废流程通知</title>
+</head>
+<body>
+<h2>报废流程通知</h2>
+<p>尊敬的用户：</p>
+<p>您好！当前有一个报废流程 <strong th:text="${processId}"></strong> 需要处理，请您及时处理。</p>
+<table>
+    <tr>
+        <td>申请人：</td>
+        <td th:text="${user}"></td>
+    </tr>
+    <tr>
+        <td>申请日期：</td>
+        <td th:text="${date}"></td>
+    </tr>
+    <tr>
+        <td>流程名称：</td>
+        <td>报废流程</td>
+    </tr>
+</table>
+<p>请登录系统进行处理。</p>
+<p>感谢您的配合！</p>
+</body>
+</html>

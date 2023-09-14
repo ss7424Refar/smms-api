@@ -1,0 +1,125 @@
+server:
+  port: 8088
+  servlet:
+    context-path: /uapi
+    session:
+      timeout: 3600
+    multipart:
+      # 单个文件大小
+      max-file-size: 1MB
+      # 一次性上传文件的大小
+      max-request-size: 1MB
+  tomcat:
+    accesslog:
+      enabled: true
+      suffix: .log
+      prefix: access_log
+      file-date-format: .yyyy-MM-dd
+      directory: logs
+      pattern: common
+    basedir: tomcat
+    relaxedQueryChars: <,>, [,],^,`,{,|,}
+
+spring:
+  main:
+    allow-bean-definition-overriding : true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/smms?serverTimezone=Asia/Shanghai&characterEncoding=utf-8&createDatabaseIfNotExist=true&nullCatalogMeansCurrent=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+  jpa:
+    open-in-view: true
+    show-sql: true # 默认false，在日志里显示执行的sql语句
+    database: mysql
+#    properties:
+    hibernate:
+      ddl-auto: update #指定为update，每次启动项目检测表结构有变化的时候会新增字段，表不存在时会 新建，如果指定create，则每次启动项目都会清空数据并删除表，再新建
+#        format_sql: true
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+    add-properties: false
+    # 避免输出 Condition evaluation delta: 因为修改/error
+    log-condition-evaluation-delta: false
+  activiti:
+    #    flase：       默认值。activiti在启动时，会对比数据库表中保存的版本，如果没有表或者版本不匹配，将抛出异常。（生产环境常用）
+    #    true：        activiti会对数据库中所有表进行更新操作。如果表不存在，则自动创建。（开发时常用）
+    #    create_drop： 在activiti启动时创建表，在关闭时删除表（必须手动关闭引擎，才能删除表）。（单元测试常用）
+    #    drop-create： 在activiti启动时删除原来的旧表，然后在创建新表（不需要手动关闭引擎）。
+    database-schema-update: true
+    #默认不生成历史表，这里开启
+    db-history-used: true
+    #在流程引擎启动就激活AsyncExecutor,异步 true  false 关闭  （切记关闭）
+    async-executor-activate: false
+    #历史登记
+    #    none: 不记录历史流程，性能高，流程结束后不可读取
+    #    activity: 归档流程实例和活动实例，流程变量不同步
+    #    audit: 默认值，在activiti基础上同步变量值，保存表单属性
+    #    full: 性能较差，记录所有实例和变量细节变化，最完整的历史记录，如果需要日后跟踪详细可以开启full（一般不建议开启）
+    history-level: full
+#    deployment-mode:  never-fail # 关闭 SpringAutoDeployment
+#    check-process-definitions: true
+#    mail-server-host: smtp.163.com
+#    mail-server-port: 994
+#    mail-server-default-from: m15268837061@163.com
+#    mail-server-user-name: m15268837061@163.com
+#    # 邮箱客户端授权码
+#    mail-server-password: OXQCKVNELQHKBPPV
+#    mail-server-use-ssl: true
+#    async-executor-enabled: true
+#    async-executor-activate: true
+
+  mail:
+    protocol: smtp
+    host: localhost
+    port: 25
+#    username: m15268837061@163.com
+#    password: OXQCKVNELQHKBPPV
+    default-encoding: UTF-8
+#    test-connection: false
+#    properties:
+#      mail:
+#        smtp:
+#          auth: true
+#          starttls:
+#            enable: true
+#          ssl:
+#            enable: true
+#            socketFactory:
+#              fallback: false
+#              class: javax.net.ssl.SSLSocketFactory
+  thymeleaf:
+    check-template: true
+#      prefix: classpath:/thymeleaf
+    suffix: .html
+    encoding: UTF-8
+    servlet:
+      content-type: text/html
+    mode: HTML
+logging:
+  level:
+    org:
+      activiti:
+        engine:
+          impl:
+            persistence:
+              entity: trace
+  config: classpath:logback.xml
+
+my-config:
+  image-path:
+    /opt/upload/profile/
+  virus-log-path:
+    /opt/upload/virus/
+  # 无需包装请求的url
+  whiteList:
+    - /user/uploadImage
+    - /virus/autoUpload
+
+  mail-from: asv.tech@dynabook.com
+  send-mail: true

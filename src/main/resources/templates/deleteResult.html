@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>审批结果通知</title>
+</head>
+<body>
+<h2>审批结果通知</h2>
+
+<p>您好！</p>
+
+<p>您参与的审批流程已经被<span style="color: green;" th:text="${result}"></span>。</p>
+
+<ul>
+  <li><strong>流程ID:</strong> <span th:text="${processId}"></span></li>
+  <li><strong>流程名称:</strong> 删除审批</li>
+  <li><strong>处理人:</strong> <span th:text="${handleUser}"></span></li>
+</ul>
+
+<p>感谢您的参与！</p>
+
+<p>此为系统自动发送，请勿回复。</p>
+
+</body>
+</html>
