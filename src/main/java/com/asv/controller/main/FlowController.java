@@ -1,6 +1,5 @@
 package com.asv.controller.main;
 
-import com.asv.constant.AntivirusStatus;
 import com.asv.constant.DeviceStatus;
 import com.asv.constant.LogRecordType;
 import com.asv.dao.*;
@@ -135,6 +134,7 @@ public class FlowController {
                 device.setStatus(DeviceStatus.DELETING.getValue());
             }
 
+            device.setUpdateDate(new Date());
             deviceDao.saveAndFlush(device);
         });
 
@@ -194,8 +194,9 @@ public class FlowController {
             device.setBorrowDate(new Date());
             device.setUsingLine(usingLine);
             device.setUsingPost(usingPost);
-            device.setVirus(AntivirusStatus.NOT_SCANNED.getValue());
-            device.setVirusDate(null);
+//            device.setVirus(AntivirusStatus.NOT_SCANNED.getValue());
+//            device.setVirusDate(null);
+            device.setUpdateDate(new Date());
 
             deviceDao.saveAndFlush(device);
 

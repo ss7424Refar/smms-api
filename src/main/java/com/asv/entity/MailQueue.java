@@ -13,7 +13,7 @@ public class MailQueue {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "flag")
+    @Column(name = "flag", columnDefinition = "int(1)")
     private Integer flag;
 
     @Column(name = "subject")

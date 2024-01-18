@@ -18,4 +18,9 @@ public interface LogRecordDao extends JpaRepository<LogRecord, Long> {
     @Query("SELECT new com.asv.model.LogRecordModel(deviceId, deviceName, logType, operatorName, operatorDate, remark) " +
             "From LogRecord WHERE businessKey = :businessKey")
     List<LogRecordModel> findBusinessDetail(Sort sort, String businessKey);
+
+//    List<LogRecord> findByDeviceId(String deviceId, Sort sort);
+
+    List<LogRecord> findByDeviceIdIn(List<String> deviceId);
+
 }

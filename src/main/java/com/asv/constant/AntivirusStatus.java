@@ -4,7 +4,7 @@ public enum AntivirusStatus {
     NOT_SCANNED(0, "未杀毒"),
     SCANNING(1, "已归还待查杀"),
     SCANNED(2, "已杀毒"),
-    WARNING_SCANNED(3, "＆已杀毒");
+    WARNING_SCANNED(3, "杀毒(ERR)");
 
     private final int value;
     private final String description;

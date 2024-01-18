@@ -39,6 +39,7 @@ public class DeviceService {
                 device.setStatus(DeviceStatus.IN_STORE.getValue());
             }
 
+            device.setUpdateDate(new Date());
             deviceDao.saveAndFlush(device);
             log.info("deviceID: " + s + " >> " + judge + " 报废流程结束");
         }
@@ -59,6 +60,7 @@ public class DeviceService {
                 deviceDao.delete(device);
             } else {
                 device.setStatus(DeviceStatus.IN_STORE.getValue());
+                device.setUpdateDate(new Date());
                 deviceDao.saveAndFlush(device);
             }
 

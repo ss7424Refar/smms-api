@@ -118,6 +118,7 @@ public class ActivityController {
                 continue;
             }
             device.setStatus(DeviceStatus.IN_STORE.getValue());
+            device.setUpdateDate(new Date());
             deviceDao.saveAndFlush(device);
 
             // 日志
@@ -402,6 +403,8 @@ public class ActivityController {
 
             }
         }
+
+        resultList.sort(Comparator.comparing(ProcessModel::getProcessId, Comparator.reverseOrder()));
 
         return resultList;
     }

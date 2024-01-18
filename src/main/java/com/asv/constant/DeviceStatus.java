@@ -32,4 +32,13 @@ public enum DeviceStatus {
         }
         return null; // 如果找不到对应的value，则返回null或者其他合适的默认值
     }
+
+    public static int getValueByDesc(String desc) {
+        for (DeviceStatus status : DeviceStatus.values()) {
+            if (status.getDesc().equalsIgnoreCase(desc)) {
+                return status.getValue();
+            }
+        }
+        return -1; // 如果找不到对应的desc，则返回一个合适的默认值，这里返回-1
+    }
 }

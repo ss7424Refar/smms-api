@@ -14,14 +14,12 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
 
     Device findByDeviceId(String deviceId);
     Device findByPnDevice(String pnDevice);
+    Device findByName(String name);
 
     @Query(value = "SELECT new com.asv.model.DeviceModel(t.deviceId, t.name, t.capacity, t.program, t.departId, t.sectionId, t.remark)" +
             " FROM Device t WHERE t.deviceId = :deviceId")
     DeviceModel getDeviceUpdateInfo(String deviceId);
 
-    // String deviceId, String deviceName, Integer _status, String capacity, String program, Integer _virus, Date virusDate,
-    // String currentUserName, String departName, String sectionName, Date borrowDate,
-    // String remark, String usingLine, String usingPost, String pnDevice, Date storeDate, String type, Date scrapDate
     @Query(value = "SELECT new com.asv.model.DeviceModel(t.deviceId, t.name, t.status, t.capacity, t.program, " +
             "t.virus, t.virusDate, t.currentUserName, td.name, ts.name, t.borrowDate, t.remark, t.usingLine, t.usingPost, " +
             "t.pnDevice, t.storeDate, t.type, t.scrapDate) " +
@@ -37,7 +35,8 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
     Device findByStatusAndDeviceId(Integer status, String deviceId);
 
     @Query(value = "SELECT new com.asv.model.DeviceModel(t.deviceId, t.name, t.status, t.capacity, t.program, " +
-            "t.virus, t.virusDate, t.currentUserName, td.name, ts.name, t.borrowDate) " +
+            "t.virus, t.virusDate, t.currentUserName, td.name, ts.name, t.borrowDate, t.remark, t.usingLine, t.usingPost, " +
+            "t.pnDevice, t.storeDate, t.type, t.scrapDate) " +
             "FROM Device t " +
             "LEFT JOIN Depart td ON td.id = t.departId " +
             "LEFT JOIN Section ts ON ts.id = t.sectionId " +
@@ -51,8 +50,8 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
             "AND (:sectionId IS NOT NULL AND t.sectionId = :sectionId OR :sectionId IS NULL) " +
             "AND (:virus IS NOT NULL AND t.virus = :virus OR :virus IS NULL) " +
             "AND (:currentUserName IS NOT NULL AND t.currentUserName LIKE CONCAT('%', :currentUserName, '%') OR :currentUserName IS NULL) " +
-            "AND (:remark IS NOT NULL AND t.remark LIKE CONCAT('%', :remark, '%') OR :remark IS NULL) " +
-            "ORDER BY t.storeDate desc"
+            "AND (:usingLine IS NOT NULL AND t.usingLine LIKE CONCAT('%', :usingLine, '%') OR :usingLine IS NULL) " +
+            "AND (:remark IS NOT NULL AND t.remark LIKE CONCAT('%', :remark, '%') OR :remark IS NULL) "
     )
     Page<DeviceModel> searchDevicesByKeyword(@Param("deviceId") String deviceId,
                                              @Param("deviceName") String deviceName,
@@ -64,6 +63,7 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
                                              @Param("sectionId") Integer sectionId,
                                              @Param("virus") Integer virus,
                                              @Param("currentUserName") String currentUserName,
+                                             @Param("usingLine") String usingLine,
                                              @Param("remark") String remark,
                                              Pageable pageable);
 
@@ -79,7 +79,8 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
 
 
     @Query(value = "SELECT new com.asv.model.DeviceModel(t.deviceId, t.name, t.status, t.capacity, t.program, " +
-            "t.virus, t.virusDate, t.currentUserName, td.name, ts.name, t.borrowDate) " +
+            "t.virus, t.virusDate, t.currentUserName, td.name, ts.name, t.borrowDate, t.remark, t.usingLine, t.usingPost, " +
+            "t.pnDevice, t.storeDate, t.type, t.scrapDate) " +
             "FROM Device t " +
             "LEFT JOIN Depart td ON td.id = t.departId " +
             "LEFT JOIN Section ts ON ts.id = t.sectionId " +
@@ -93,6 +94,7 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
             "AND (:sectionId IS NOT NULL AND t.sectionId = :sectionId OR :sectionId IS NULL) " +
             "AND (:virus IS NOT NULL AND t.virus = :virus OR :virus IS NULL) " +
             "AND (:currentUserName IS NOT NULL AND t.currentUserName LIKE CONCAT('%', :currentUserName, '%') OR :currentUserName IS NULL) " +
+            "AND (:usingLine IS NOT NULL AND t.usingLine LIKE CONCAT('%', :usingLine, '%') OR :usingLine IS NULL) " +
             "AND (:remark IS NOT NULL AND t.remark LIKE CONCAT('%', :remark, '%') OR :remark IS NULL) " +
             "ORDER BY t.storeDate desc"
     )
@@ -106,6 +108,7 @@ public interface DeviceDao extends JpaRepository<Device, Long> {
                                              @Param("sectionId") Integer sectionId,
                                              @Param("virus") Integer virus,
                                              @Param("currentUserName") String currentUserName,
+                                             @Param("usingLine") String usingLine,
                                              @Param("remark") String remark);
 
 

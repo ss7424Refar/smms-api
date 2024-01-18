@@ -1,6 +1,7 @@
 package com.asv.dao;
 
-import com.asv.entity.Role;
+
+import com.asv.entity.Work;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -9,16 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-public interface RoleDao extends JpaRepository<Role, Long> {
-    Role findByName(String roleName);
+public interface WorkDao extends JpaRepository<Work, Long> {
+    Work findByName(String name);
 
-    Role findById(Integer id);
+    Work findById(Integer id);
 
     @Modifying
     @Transactional
-    @Query("DELETE FROM Role r WHERE r.id IN :ids")
+    @Query("DELETE FROM Work w WHERE w.id IN :ids")
     void deleteByIds(@Param("ids") List<Integer> ids);
 
 }
-
-

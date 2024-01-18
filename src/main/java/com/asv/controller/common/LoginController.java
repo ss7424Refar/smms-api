@@ -17,6 +17,8 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Slf4j
@@ -32,18 +34,26 @@ public class LoginController {
     @Autowired
     MailQueueDao mailQueueDao;
 
+    // 用工号登录
     @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public String login(HttpServletRequest request, String mail, String password) {
-        User user = userDao.findByMail(mail);
+    public Map<String, Object> login(HttpServletRequest request, String identifier, String password) {
+        User user = userDao.findByUserNo(identifier);
+
         if (null == user) {
             log.error("登录失败");
-            throw new RuntimeException("邮箱帐号不正确");
+            throw new RuntimeException("帐号不正确");
         } else {
             if (PasswordUtils.encode(password).equals(user.getPassword())) {
                 log.info(user.getUserNo() + " - " + user.getUserName() + " 登录成功");
 
+                Map<String, Object> resultMap = new HashMap<>();
+                resultMap.put("token", TokenUtil.generateToken(String.valueOf(user.getUserId()), user.getUserName()));
+
+                user.setPassword(null);
+                resultMap.put("user", user);
+
                 // 返回token
-                return TokenUtil.generateToken(String.valueOf(user.getUserId()), user.getUserName());
+                return resultMap;
 
             } else {
                 throw new RuntimeException("密码不正确");
@@ -61,10 +71,12 @@ public class LoginController {
         }
 
         // 随机生成密码
-        String newPassword = PasswordUtils.hashPassword(PasswordUtils.generateRandomString());
+        String randomPassword = PasswordUtils.generateRandomString();
+        user.setPassword(PasswordUtils.encode(randomPassword));
+        userDao.saveAndFlush(user);
 
         Context context = new Context();
-        context.setVariable("newPassword", newPassword);
+        context.setVariable("newPassword", randomPassword);
 
         MailQueue mailQueue = new MailQueue();
 

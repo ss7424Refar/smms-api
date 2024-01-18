@@ -34,6 +34,8 @@ public class InterceptorConfig implements WebMvcConfigurer {
                         "/login/forgotPassword",
                         "/image/**",
                         "/win32/**",
+                        "/device/download",
+                        "/device/select", // 这里为了app端可以多开窗口取消token验证
                         "/error");//排除该登录地址或添加其他
         registry.addInterceptor(new LoggerInterceptor()).addPathPatterns("/**");
 

@@ -7,25 +7,22 @@ import com.asv.dao.VirusHistoryDao;
 import com.asv.entity.Device;
 import com.asv.entity.User;
 import com.asv.entity.VirusHistory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.*;
+import java.nio.charset.Charset;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping(value = "/virus")
+@Slf4j
 public class VirusController {
     @Autowired
     DeviceDao deviceDao;
@@ -80,9 +77,10 @@ public class VirusController {
                 lastLine = line;
             }
 
+
             if (lastLine.startsWith("Return Code")) {
                 String[] code = lastLine.trim().split(":");
-                int returnCode = Integer.parseInt(code[1].trim());
+                long returnCode = Long.parseLong(code[1].trim());
                 String codeString = "";
 
                 if (returnCode == 0) {
@@ -101,7 +99,7 @@ public class VirusController {
                 } else if (returnCode == 100) {
                     codeString = "错误";
                     device.setVirus(AntivirusStatus.WARNING_SCANNED.getValue());
-                } else if (returnCode > 100) {
+                } else if (returnCode > 100 && returnCode != 2147516566L) {
                     codeString = "未扫描文件，该文件可能被感染";
                     device.setVirus(AntivirusStatus.WARNING_SCANNED.getValue());
                 } else {
@@ -110,6 +108,8 @@ public class VirusController {
                 }
 
                 device.setVirusDate(new Date());
+                device.setUpdateDate(new Date());
+                deviceDao.saveAndFlush(device);
 
                 VirusHistory virusHistory = new VirusHistory();
 
@@ -156,6 +156,7 @@ public class VirusController {
 
             device.setVirus(AntivirusStatus.SCANNED.getValue());
             device.setVirusDate(new Date());
+            device.setUpdateDate(new Date());
 
             deviceDao.saveAndFlush(device);
 
@@ -180,15 +181,32 @@ public class VirusController {
     // 查看日志文件
     @RequestMapping(value = "/showLog", method = RequestMethod.POST)
     public String showLog(HttpServletRequest httpServletRequest) throws IOException {
-        String fileName = httpServletRequest.getParameter("fileName");
-        List<String> lines = Files.readAllLines(Paths.get(Constant.VIRUS_LOG_PATH + "/" + fileName),
-                StandardCharsets.UTF_8);
-        StringBuffer stringBuffer = new StringBuffer();
-        lines.forEach(line -> {
-            stringBuffer.append(line).append("\n");
-        });
+        String filePath = Constant.VIRUS_LOG_PATH + "/" + httpServletRequest.getParameter("fileName");
+        Charset charset = Charset.forName("GBK");
+        StringBuilder content = new StringBuilder();
 
-        return stringBuffer.toString();
+        try (FileInputStream fis = new FileInputStream(filePath);
+             InputStreamReader isr = new InputStreamReader(fis, charset);
+             BufferedReader reader = new BufferedReader(isr)) {
 
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append("\n");
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return content.toString();
+    }
+
+    @RequestMapping(value = "/traceLog", method = RequestMethod.POST)
+    public String traceLog(HttpServletRequest httpServletRequest) {
+        String count = httpServletRequest.getParameter("count");
+        String deviceIds = httpServletRequest.getParameter("deviceIds");
+
+        log.info("[traceAutoVirusLog] " + count + ":" + deviceIds);
+
+        return "跟踪完成";
     }
 }

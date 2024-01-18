@@ -20,7 +20,7 @@ server:
     basedir: tomcat
     # Tomcat在Tomcat 7.0.73+，Tomcat 8.0.39+，Tomcat 8.5.7+，Tomcat 9.0.0.M12 (markt)+版本后，
     # 在http url解析时做了严格字符限制，url包含特殊字符将直接返回http code 400
-    relaxedQueryChars: <,>, [,],^,`,{,|,}
+    relaxedQueryChars: <,>, [,],^,`,{,|,},%,&,\,_
 
 spring:
   profiles:
@@ -97,6 +97,7 @@ my-config:
   whiteList:
     - /user/uploadImage
     - /virus/autoUpload
-
+    - /device/importExcel
+    - /device/select
   mail-from: asv.tech@dynabook.com
   send-mail: false

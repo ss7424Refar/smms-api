@@ -16,10 +16,10 @@ public class User implements Serializable {
     @Column(name = "user_id")
     private Integer userId;
 
-    @Column(name = "user_no", nullable = false)
+    @Column(name = "user_no", nullable = false, columnDefinition = "varchar(8)")
     private String userNo;
 
-    @Column(name = "user_name")
+    @Column(name = "user_name", columnDefinition = "varchar(8)")
     private String userName;
 
     @Column(name = "role_id")
@@ -50,5 +50,11 @@ public class User implements Serializable {
 
     @Column(name = "status", columnDefinition = "varchar(2) default '在职'")
     private String status;
+
+    @Column(name = "using_line", columnDefinition = "varchar(8)")
+    private String usingLine;
+
+    @Column(name = "user_post", columnDefinition = "varchar(8)")
+    private String userPost;
 
 }

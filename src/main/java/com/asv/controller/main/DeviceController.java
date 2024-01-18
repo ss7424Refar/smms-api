@@ -1,6 +1,13 @@
 package com.asv.controller.main;
 
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
+import com.alibaba.excel.read.builder.ExcelReaderBuilder;
+import com.alibaba.excel.support.ExcelTypeEnum;
+import com.alibaba.excel.write.metadata.WriteSheet;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.asv.aspect.DeviceUpdateAnnotation;
 import com.asv.constant.AntivirusStatus;
 import com.asv.constant.DeviceStatus;
 import com.asv.dao.BorrowHistoryDao;
@@ -12,24 +19,23 @@ import com.asv.http.ResponseResult;
 import com.asv.model.DeviceModel;
 import com.asv.model.LogRecordModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpHeaders;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.ParseException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -48,35 +54,34 @@ public class DeviceController {
     public String add(HttpServletRequest httpServletRequest, @RequestBody JSONObject json) throws ParseException {
         // 去掉转义的
         String pnDevice = json.getString("pnDevice");
-        Device device = deviceDao.findByPnDevice(pnDevice);
-        if (device != null) {
-            throw new RuntimeException("添加失败(存在设备实际路径)");
-        }
-        Boolean sd = json.getBoolean("SD");
-        String type = json.getString("type");
-        String prefix = "";
+        String deviceId = json.getString("deviceId");
 
-        if (sd) {
-            prefix = "TFC-";
-        } else {
-            if (type.equalsIgnoreCase("Removable Media")) {
-                prefix = "USB-";
-            } else if (type.equalsIgnoreCase("External hard disk media")) {
-                prefix = "HDD-";
-            } else {
-                prefix = "NTY-";
+        // 当virus=0时可传入virusDate=null, virus=1传入virusDate HH:MM:SS
+        Integer virus = json.getInteger("virus");
+        Date virusDate = json.getDate("virusDate");
+
+        // 存在光盘其他设备的情况可能无实际路径
+        if (pnDevice != null) {
+            Device device = deviceDao.findByPnDevice(pnDevice);
+            if (device != null) {
+                throw new RuntimeException("添加失败(存在设备实际路径)");
             }
         }
 
-        User u = (User) httpServletRequest.getAttribute("login");
+        if (deviceId != null) {
+            Device device = deviceDao.findByDeviceId(deviceId);
+            if (device != null) {
+                throw new RuntimeException("添加失败(存在重复设备ID)");
+            }
+        }
 
-        // 查找总数
-        Long maxId = deviceDao.findMaxId();
-        String deviceId = prefix + String.format("%07d", maxId == null ? 1 : maxId + 1);
+        String type = json.getString("type");
+        User u = (User) httpServletRequest.getAttribute("login");
 
         Device device1 = Device.builder().name(json.getString("name"))
                 .status(DeviceStatus.IN_STORE.getValue())
-                .virus(AntivirusStatus.NOT_SCANNED.getValue())
+                .virus(virus)
+                .virusDate(virusDate)
                 .type(type)
                 .capacity(json.getString("capacity"))
                 .program(json.getString("program"))
@@ -86,6 +91,7 @@ public class DeviceController {
                 .deviceId(deviceId)
                 .remark(json.getString("remark"))
                 .storeDate(new Date())
+                .updateDate(new Date())
                 .storeUserId(u.getUserId())
                 .build();
 
@@ -93,6 +99,58 @@ public class DeviceController {
         return "添加成功:" + deviceId;
     }
 
+    @RequestMapping(value = "/addMulti", method = RequestMethod.POST)
+    public String addMulti(HttpServletRequest httpServletRequest, @RequestBody JSONObject json) {
+        JSONArray deviceInfosArray = json.getJSONArray("deviceInfos");
+
+        // 当virus=0时可传入virusDate=null, virus=1传入virusDate HH:MM:SS
+        Integer virus = json.getInteger("virus");
+        Date virusDate = json.getDate("virusDate");
+
+        for (int i = 0; i < deviceInfosArray.size(); i++) {
+            JSONObject deviceInfoObject = deviceInfosArray.getJSONObject(i);
+            Device device = deviceDao.findByPnDevice(deviceInfoObject.getString("pnDevice"));
+            if (device != null) {
+                throw new RuntimeException("添加失败(存在设备实际路径) - " + device.getDeviceId());
+            }
+        }
+
+        User u = (User) httpServletRequest.getAttribute("login");
+
+        for (int i = 0; i < deviceInfosArray.size(); i++) {
+            JSONObject deviceInfoObject = deviceInfosArray.getJSONObject(i);
+
+            String type = deviceInfoObject.getString("type");
+            String prefix = "FM-";
+
+            // 查找总数
+            Long maxId = deviceDao.findMaxId();
+            String deviceId = prefix + String.format("%04d", maxId == null ? 1 : maxId + 1);
+
+            Device device1 = Device.builder().name(deviceInfoObject.getString("name"))
+                    .capacity(deviceInfoObject.getString("capacity"))
+                    .pnDevice(deviceInfoObject.getString("pnDevice"))
+                    .type(type)
+                    .status(DeviceStatus.IN_STORE.getValue())
+                    .virus(virus)
+                    .virusDate(virusDate)
+                    .program(json.getString("program"))
+                    .departId(json.getInteger("departId"))
+                    .sectionId(json.getInteger("sectionId"))
+                    .deviceId(deviceId)
+                    .remark(json.getString("remark"))
+                    .storeDate(new Date())
+                    .updateDate(new Date())
+                    .storeUserId(u.getUserId())
+                    .build();
+
+            deviceDao.save(device1);
+        }
+
+        return "";
+    }
+
+    @DeviceUpdateAnnotation
     @RequestMapping(value = "/checkUsingDevice", method = RequestMethod.POST)
     public JSONObject checkUsingDevice(HttpServletRequest httpServletRequest) {
         String deviceId = httpServletRequest.getParameter("deviceId");
@@ -105,11 +163,30 @@ public class DeviceController {
 
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("deviceId", device.getDeviceId());
+        jsonObject.put("deviceName", device.getName());
         jsonObject.put("devicePath", device.getPnDevice());
 
         return jsonObject;
     }
 
+    @DeviceUpdateAnnotation
+    @RequestMapping(value = "/checkInDevice", method = RequestMethod.POST)
+    public JSONObject checkInDevice(HttpServletRequest httpServletRequest) {
+        String deviceId = httpServletRequest.getParameter("deviceId");
+
+        Device device = deviceDao.findByStatusAndDeviceId(DeviceStatus.IN_STORE.getValue(), deviceId);
+
+        if (device == null) {
+            throw new RuntimeException("不存在该设备ID或状态不为在库 - " + deviceId);
+        }
+
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("deviceId", device.getDeviceId());
+        jsonObject.put("deviceName", device.getName());
+        jsonObject.put("devicePath", device.getPnDevice());
+
+        return jsonObject;
+    }
     @PostMapping(value = "/select")
     public Map<String, Object> selectDevice(@RequestParam(value = "deviceId", required = false) String deviceId,
                                             @RequestParam(value = "deviceName", required = false) String deviceName,
@@ -122,10 +199,15 @@ public class DeviceController {
                                             @RequestParam(value = "virus", required = false) Integer virus,
                                             @RequestParam(value = "currentUserName", required = false) String currentUserName,
                                             @RequestParam(value = "remark", required = false) String remark,
+                                            @RequestParam(value = "usingLine", required = false) String usingLine,
+                                            @RequestParam(value = "sort", required = false) String sort,
                                             @RequestParam("pageNum") int pageNum,
                                             @RequestParam("pageSize") int pageSize) {
 
-        Pageable pageable = PageRequest.of(pageNum, pageSize);
+        Sort sort1 = ObjectUtils.isEmpty(sort) ? Sort.by(Sort.Direction.DESC, "storeDate") :
+                Sort.by(Sort.Order.desc("updateDate"), Sort.Order.desc("deviceId"));
+
+        Pageable pageable = PageRequest.of(pageNum, pageSize, sort1);
         if (ObjectUtils.isEmpty(deviceId)) {
             deviceId = null;
         }
@@ -144,11 +226,15 @@ public class DeviceController {
         if (ObjectUtils.isEmpty(currentUserName)) {
             currentUserName = null;
         }
+        if (ObjectUtils.isEmpty(usingLine)) {
+            usingLine = null;
+        }
         if (ObjectUtils.isEmpty(remark)) {
             remark = null;
         }
 
-        Page<DeviceModel> page = deviceDao.searchDevicesByKeyword(deviceId, deviceName, status, capacity, type, program, departId, sectionId, virus, currentUserName, remark, pageable);
+        Page<DeviceModel> page = deviceDao.searchDevicesByKeyword(deviceId, deviceName, status, capacity, type,
+                program, departId, sectionId, virus, currentUserName, usingLine, remark, pageable);
 //        Page<DeviceModel> page = deviceDao.searchDevicesByKeyword(deviceId, deviceName, status, capacity, type, program, pageable);
 
         List<DeviceModel> list = page.getContent();
@@ -168,6 +254,7 @@ public class DeviceController {
         return map;
     }
 
+    @DeviceUpdateAnnotation
     @PostMapping(value = "/getUpdateInfo")
     public ResponseResult getUpdateInfo(HttpServletRequest httpServletRequest) {
         DeviceModel deviceModel = deviceDao.getDeviceUpdateInfo(httpServletRequest.getParameter("deviceId"));
@@ -193,11 +280,13 @@ public class DeviceController {
         device1.setDepartId(device.getDepartId());
         device1.setSectionId(device.getSectionId());
         device1.setRemark(device.getRemark());
+        device1.setUpdateDate(new Date());
 
         deviceDao.saveAndFlush(device1);
         return "更新设备成功";
     }
 
+    @DeviceUpdateAnnotation
     @PostMapping(value = "/getDetail")
     public ResponseResult getDeviceDetail(HttpServletRequest httpServletRequest) {
         DeviceModel deviceModel = deviceDao.getDeviceDetail(httpServletRequest.getParameter("deviceId"));
@@ -214,6 +303,7 @@ public class DeviceController {
         return ResponseResult.success(deviceModel);
     }
 
+    @DeviceUpdateAnnotation
     @PostMapping(value = "/getBorrowDetail")
     public List<BorrowHistory> getBorrowDetail(HttpServletRequest httpServletRequest) {
         Device device = deviceDao.findByDeviceId(httpServletRequest.getParameter("deviceId"));
@@ -221,7 +311,8 @@ public class DeviceController {
         if (null == device) {
             throw new RuntimeException("没有该设备");
         }
-        List<BorrowHistory> borrowHistoryList = borrowHistoryDao.findAll(Sort.by(Sort.Direction.DESC, "id"));
+        List<BorrowHistory> borrowHistoryList = borrowHistoryDao.findByDeviceId(device.getDeviceId(),
+                Sort.by(Sort.Direction.DESC, "id"));
 
         // 为了避免看到用户id
         return borrowHistoryList.stream()
@@ -229,6 +320,7 @@ public class DeviceController {
                 .collect(Collectors.toList());
     }
 
+    @DeviceUpdateAnnotation
     @PostMapping(value = "/getVirusDetail")
     public List<VirusHistory> getVirusDetail(HttpServletRequest httpServletRequest) {
         Device device = deviceDao.findByDeviceId(httpServletRequest.getParameter("deviceId"));
@@ -236,7 +328,8 @@ public class DeviceController {
         if (null == device) {
             throw new RuntimeException("没有该设备");
         }
-        List<VirusHistory> virusHistoryList = virusHistoryDao.findAll(Sort.by(Sort.Direction.DESC, "id"));
+        List<VirusHistory> virusHistoryList = virusHistoryDao
+                .findByDeviceId(device.getDeviceId(), Sort.by(Sort.Direction.DESC, "id"));
 
         // 为了避免看到用户id
         return virusHistoryList.stream()
@@ -244,6 +337,7 @@ public class DeviceController {
                 .collect(Collectors.toList());
     }
 
+    @DeviceUpdateAnnotation
     @PostMapping(value = "/getLogDetail")
     public List<LogRecordModel> getLogDetail(HttpServletRequest httpServletRequest) {
         String deviceId = httpServletRequest.getParameter("deviceId");
@@ -266,7 +360,11 @@ public class DeviceController {
         });
 
         List<DeviceModel> deviceModels = deviceDao.findInDeviceIds(deviceIdList);
-        writeToCsv(response, deviceModels);
+        List<VirusHistory> virusHistoryList = virusHistoryDao.findByDeviceIdIn(deviceIdList);
+        List<BorrowHistory> borrowHistoryList = borrowHistoryDao.findByDeviceIdIn(deviceIdList);
+        List<LogRecord> logRecordList = logRecordDao.findByDeviceIdIn(deviceIdList);
+
+        writeToCsv(response, deviceModels, virusHistoryList, borrowHistoryList, logRecordList);
     }
 
     @PostMapping(value = "/formCsv")
@@ -280,7 +378,8 @@ public class DeviceController {
                            @RequestParam(value = "sectionId", required = false) Integer sectionId,
                            @RequestParam(value = "virus", required = false) Integer virus,
                            @RequestParam(value = "currentUserName", required = false) String currentUserName,
-                           @RequestParam(value = "remark", required = false) String remark, HttpServletResponse response) throws IOException {
+                           @RequestParam(value = "remark", required = false) String remark,
+                           @RequestParam(value = "usingLine", required = false) String usingLine, HttpServletResponse response) throws IOException {
 
         if (ObjectUtils.isEmpty(deviceId)) {
             deviceId = null;
@@ -300,48 +399,63 @@ public class DeviceController {
         if (ObjectUtils.isEmpty(currentUserName)) {
             currentUserName = null;
         }
+        if (ObjectUtils.isEmpty(usingLine)) {
+            usingLine = null;
+        }
         if (ObjectUtils.isEmpty(remark)) {
             remark = null;
         }
 
-        List<DeviceModel> list = deviceDao.exportByForm(deviceId, deviceName, status, capacity, type, program, departId, sectionId, virus, currentUserName, remark);
-        writeToCsv(response, list);
+        List<DeviceModel> deviceModelList = deviceDao.exportByForm(deviceId, deviceName, status, capacity, type, program, departId, sectionId, virus, currentUserName, usingLine, remark);
 
+        List<String> deviceIdList = deviceModelList.stream()
+                .map(DeviceModel::getDeviceId)
+                .collect(Collectors.toList());
+
+        List<VirusHistory> virusHistoryList = virusHistoryDao.findByDeviceIdIn(deviceIdList);
+        List<BorrowHistory> borrowHistoryList = borrowHistoryDao.findByDeviceIdIn(deviceIdList);
+        List<LogRecord> logRecordList = logRecordDao.findByDeviceIdIn(deviceIdList);
+
+        writeToCsv(response, deviceModelList, virusHistoryList, borrowHistoryList, logRecordList);
     }
 
 
-    private void writeToCsv(HttpServletResponse response, List<DeviceModel> list) throws IOException {
-        response.setContentType("text/csv; charset=utf-8");
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=deviceInfo_" +
-                System.currentTimeMillis() + ".csv");
-
-        PrintWriter writer = response.getWriter();
-
-        // 写入表头
-        writer.println("设备编号,设备名称,状态,容量,程序,杀毒,杀毒时间,用户名,部门,课,借出时间,备注,实际路径,入库时间,类型,报废时间");
-
-        list.forEach(deviceModel -> {
-            if (deviceModel.get_status() == null || deviceModel.get_virus() == null) {
-                throw new RuntimeException("枚举类型空指针错误 !");
-            }
-            deviceModel.setStatus(DeviceStatus.getDescriptionByValue(deviceModel.get_status()));
-            deviceModel.setVirus(AntivirusStatus.getDescriptionByValue(deviceModel.get_virus()));
-
-            String row = deviceModel.getDeviceId() + "," + deviceModel.getDeviceName() + "," + deviceModel.getStatus() + ","
-                    + deviceModel.getCapacity() + "," + deviceModel.getProgram() + "," + deviceModel.getVirus() + "," +
-                    deviceModel.getVirusDate() + "," + deviceModel.getCurrentUserName() + "," + deviceModel.getDepartName()
-                    + "," + deviceModel.getSectionName() + "," + deviceModel.getBorrowDate() + "," +
-                    (deviceModel.getRemark() != null ? deviceModel.getRemark() : "")
-                    + "," + deviceModel.getPnDevice() + "," + deviceModel.getStoreDate() + "," + deviceModel.getType()
-                    + "," + deviceModel.getScrapDate();
-            writer.println(row);
+    private void writeToCsv(HttpServletResponse response, List<DeviceModel> deviceModelList, List<VirusHistory> virusHistoryList,
+                            List<BorrowHistory> borrowHistoryList, List<LogRecord> logRecordList) throws IOException {
+        deviceModelList.forEach(deviceModel -> {
+                if (deviceModel.get_status() == null || deviceModel.get_virus() == null) {
+                    throw new RuntimeException("枚举类型空指针错误 !");
+                }
+                deviceModel.setStatus(DeviceStatus.getDescriptionByValue(deviceModel.get_status()));
+                deviceModel.setVirus(AntivirusStatus.getDescriptionByValue(deviceModel.get_virus()));
         });
 
-        writer.close();
+//        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setContentType("application/vnd.ms-excel");
+        response.setCharacterEncoding("utf-8");
+        response.setHeader("Content-disposition", "attachment; filename=" + "deviceInfo_" +
+                System.currentTimeMillis() + ".xlsx");
+
+        try (ExcelWriter excelWriter = EasyExcel.write(response.getOutputStream()).build()) {
+            WriteSheet writeSheet = EasyExcel.writerSheet(0, "详细信息").head(DeviceModel.class).build();
+            excelWriter.write(deviceModelList, writeSheet);
+
+            WriteSheet writeSheet2 = EasyExcel.writerSheet(1, "杀毒记录").head(VirusHistory.class).build();
+            excelWriter.write(virusHistoryList, writeSheet2);
+
+            WriteSheet writeSheet3 = EasyExcel.writerSheet(2, "借出记录").head(BorrowHistory.class).build();
+            excelWriter.write(borrowHistoryList, writeSheet3);
+
+            WriteSheet writeSheet4 = EasyExcel.writerSheet(3, "操作记录").head(LogRecord.class).build();
+            excelWriter.write(logRecordList, writeSheet4);
+        }
+
     }
 
     @PostMapping(value = "/scanReturn")
-    public String scanReturn(@RequestBody List<String> deviceIdList) {
+    public String scanReturn(HttpServletRequest httpServletRequest, @RequestBody List<String> deviceIdList) {
+        String confirm = httpServletRequest.getParameter("confirm");
+
         deviceIdList.forEach(deviceId -> {
             Device device = deviceDao.findByDeviceId(deviceId);
             if (device == null) {
@@ -357,24 +471,186 @@ public class DeviceController {
 
             // 在库
             device.setStatus(DeviceStatus.IN_STORE.getValue());
-            device.setVirus(AntivirusStatus.SCANNING.getValue());
+
+            if (confirm.equalsIgnoreCase("N")) {
+                device.setVirus(AntivirusStatus.SCANNING.getValue());
+            } else {
+                device.setVirus(AntivirusStatus.SCANNED.getValue());
+            }
 
             device.setUsingPost(null);
-            device.setUsingPost(null);
+            device.setUsingLine(null);
             device.setCurrentUserId(null);
             device.setCurrentUserName(null);
             device.setBorrowDate(null);
+            device.setUpdateDate(new Date());
 
             deviceDao.saveAndFlush(device);
 
             // 更新结束使用时间
-            BorrowHistory borrowHistory = borrowHistoryDao.findByDeviceId(deviceId);
-            borrowHistory.setEndTime(new Date());
+            BorrowHistory borrowHistory = borrowHistoryDao.findHistoryByDeviceId(deviceId);
+            // 这里加个判断是为了中途导入的数据情况会出现不整合
+            if (borrowHistory != null) {
+                borrowHistory.setEndTime(new Date());
+                borrowHistoryDao.saveAndFlush(borrowHistory);
+            }
 
-            borrowHistoryDao.saveAndFlush(borrowHistory);
         });
 
-        return "归还成功, 请杀毒";
+        return "归还成功, 请查看杀毒状态";
+    }
+
+    @GetMapping(value = "/download")
+    private void downloadTemplate(HttpServletResponse response) throws IOException {
+        // 获取文件路径
+        String filePath = "download/template.xlsx";
+
+        // 加载文件资源
+        ClassPathResource resource = new ClassPathResource(filePath);
+
+        // 设置响应头
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=" + resource.getFilename());
+
+        // 将文件内容输出到response中
+        InputStream inputStream = resource.getInputStream();
+        OutputStream outputStream = response.getOutputStream();
+
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outputStream.write(buffer, 0, bytesRead);
+        }
+
+        inputStream.close();
+        outputStream.close();
+    }
+
+    @PostMapping(value = "/importExcel")
+    public String importExcel(HttpServletRequest httpServletRequest, @RequestPart("file") MultipartFile file) throws IOException {
+        String originalFilename = file.getOriginalFilename();
+        assert originalFilename != null;
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
+
+        ExcelReaderBuilder readerBuilder = EasyExcel.read(file.getInputStream());
+
+        if ("xls".equalsIgnoreCase(extension)) {
+            // 处理Excel 97-2003格式（.xls）
+            readerBuilder = readerBuilder.excelType(ExcelTypeEnum.XLS);
+        } else {
+            // 处理Excel 2007及以上格式（.xlsx）
+            readerBuilder = readerBuilder.excelType(ExcelTypeEnum.XLSX);
+        }
+
+        List<DeviceModel> list = readerBuilder.head(DeviceModel.class)
+                .sheet()
+                .doReadSync();
+
+        // device excel import
+        User u = (User) httpServletRequest.getAttribute("login");
+
+        int lineNo = 2;
+        for (DeviceModel deviceModel : list) {
+            if (deviceModel.getDeviceId() == null) {
+                throw new RuntimeException("编号为空 - 第" + lineNo + "行");
+            }
+            if (deviceModel.getDeviceName() == null) {
+                throw new RuntimeException("设备名称为空 - 第" + lineNo + "行");
+            }
+            if (deviceModel.getVirusDate() == null) {
+                throw new RuntimeException("杀毒时间为空 - 第" + lineNo + "行");
+            }
+
+            Device device = deviceDao.findByDeviceId(deviceModel.getDeviceId());
+
+            if (device != null) {
+                throw new RuntimeException("已存在重复设备ID - " + deviceModel.getDeviceId());
+            }
+
+            // 判断状态
+            int returnStatus = DeviceStatus.getValueByDesc(deviceModel.getStatus());
+            if (-1 == returnStatus) {
+                throw new RuntimeException("设备状态输入有误 - " + deviceModel.getDeviceId());
+            }
+
+            if (1 == returnStatus) {
+                if (deviceModel.getCurrentUserName() == null) {
+                    throw new RuntimeException("使用中的领用人不为空 - " + deviceModel.getDeviceId());
+                }
+            }
+
+            lineNo++;
+        }
+
+        Set<String> duplicateDeviceIds = new HashSet<>();
+        boolean hasDuplicate = list.stream()
+                .map(DeviceModel::getDeviceId)
+                .distinct()
+                .anyMatch(deviceId -> {
+                    boolean isDuplicate = list.stream()
+                            .filter(deviceModel -> deviceModel.getDeviceId().equals(deviceId))
+                            .count() > 1;
+                    if (isDuplicate) {
+                        duplicateDeviceIds.add(deviceId);
+                    }
+                    return isDuplicate;
+                });
+
+        if (hasDuplicate) {
+            throw new RuntimeException("EXCEL中存在重复设备ID - " + duplicateDeviceIds);
+        }
+
+        for (DeviceModel deviceModel : list) {
+            Device device = Device.builder()
+                    .deviceId(deviceModel.getDeviceId())
+                    .name(deviceModel.getDeviceName())
+                    .program(deviceModel.getProgram())
+                    .status(DeviceStatus.getValueByDesc(deviceModel.getStatus()))
+                    .virusDate(deviceModel.getVirusDate())
+                    .usingLine(deviceModel.getUsingLine())
+                    .usingPost(deviceModel.getUsingPost())
+                    .currentUserName(deviceModel.getCurrentUserName())
+                    .borrowDate(deviceModel.getBorrowDate())
+                    .scrapDate(deviceModel.getScrapDate())
+                    .remark(deviceModel.getRemark())
+                    .virus(AntivirusStatus.SCANNED.getValue())
+                    .storeDate(new Date())
+                    .storeUserId(u.getUserId())
+                    .updateDate(new Date())
+                    .build();
+
+            deviceDao.save(device);
+        }
+        return "导入成功";
+    }
+
+    @PostMapping(value = "/bindDevice")
+    public String bindDevice(HttpServletRequest httpServletRequest) {
+        String deviceId = httpServletRequest.getParameter("deviceId");
+        String capacity = httpServletRequest.getParameter("capacity");
+        String type = httpServletRequest.getParameter("type");
+        String pnDevice = httpServletRequest.getParameter("pnDevice");
+
+        Device device = deviceDao.findByDeviceId(deviceId);
+
+        if (device == null) {
+            throw new RuntimeException("不存在该设备ID - " + deviceId);
+        }
+
+        Device device1 = deviceDao.findByPnDevice(pnDevice);
+        if (device1 != null) {
+            throw new RuntimeException("重复实际路径 - " + device1.getDeviceId());
+        }
+
+        device.setPnDevice(pnDevice);
+        device.setCapacity(capacity);
+        device.setType(type);
+        device.setUpdateDate(new Date());
+
+        deviceDao.saveAndFlush(device);
+
+        return "绑定成功";
+
     }
 
 }

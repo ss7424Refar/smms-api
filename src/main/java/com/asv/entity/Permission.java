@@ -16,10 +16,10 @@ public class Permission {
     @Column(name = "role_id")
     private Integer roleId;
 
-    @Column(name = "permission_code")
+    @Column(name = "permission_code", columnDefinition = "varchar(30)")
     private String code;
 
-    @Column(name = "permission_desc")
+    @Column(name = "permission_desc", columnDefinition = "varchar(20)")
     private String desc;
 
 }

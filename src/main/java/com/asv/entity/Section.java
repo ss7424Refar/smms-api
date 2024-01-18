@@ -16,7 +16,7 @@ public class Section {
     @Column(name = "department_id")
     private Integer departId;
 
-    @Column(name = "section_name")
+    @Column(name = "section_name", columnDefinition = "varchar(8)")
     private String name;
 
 }

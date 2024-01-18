@@ -1,13 +1,13 @@
 package com.asv.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
 @Getter
 @Setter
-@JsonInclude(JsonInclude.Include.NON_NULL)
+//@JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserModel {
     private Integer userId;
     private String departName;
@@ -26,7 +26,11 @@ public class UserModel {
     private Integer roleId;
     private Integer duties;
 
-    public UserModel(Integer userId, String mail, String sex, String status, String userName, String userNo, Integer departId, Integer sectionId, Integer roleId, Integer duties) {
+    private String usingLine;
+    private String userPost;
+
+    public UserModel(Integer userId, String mail, String sex, String status, String userName, String userNo,
+                     Integer departId, Integer sectionId, Integer roleId, Integer duties, String usingLine, String userPost) {
         this.userId = userId;
         this.mail = mail;
         this.sex = sex;
@@ -37,9 +41,12 @@ public class UserModel {
         this.sectionId = sectionId;
         this.roleId = roleId;
         this.duties = duties;
+        this.usingLine = usingLine;
+        this.userPost = userPost;
     }
 
-    public UserModel(Integer userId, String departName, String postName, String icons, String mail, String roleName, String sectionName, String sex, String status, String userName, String userNo) {
+    public UserModel(Integer userId, String departName, String postName, String icons, String mail, String roleName,
+                     String sectionName, String sex, String status, String userName, String userNo, String usingLine, String userPost) {
         this.userId = userId;
         this.departName = departName;
         this.postName = postName;
@@ -51,5 +58,7 @@ public class UserModel {
         this.status = status;
         this.userName = userName;
         this.userNo = userNo;
+        this.usingLine = usingLine;
+        this.userPost = userPost;
     }
 }

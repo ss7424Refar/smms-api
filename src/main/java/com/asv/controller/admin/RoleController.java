@@ -46,7 +46,7 @@ public class RoleController {
 
     @PostMapping(value = "/update")
     public String updateRole(@Valid @RequestBody Role role) {
-        Role role1 = roleDao.findByName(role.getName());
+        Role role1 = roleDao.findById(role.getId());
 
         if (null == role1) {
             throw new RuntimeException("没有该角色");

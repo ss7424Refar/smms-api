@@ -32,6 +32,9 @@ public class TokenInterceptor implements HandlerInterceptor {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
             try {
+                if (TokenUtil.isTokenExpired(token)) {
+                    throw new ExpiredJwtException(null, null, "用户密码修改 - token失效");
+                }
                 Claims claims = TokenUtil.parseToken(token);
                 String userId = claims.getSubject();
                 User user = userDao.findByUserId(Integer.valueOf(userId));

@@ -24,7 +24,7 @@ public interface UserDao extends JpaRepository<User, Long> {
     List<User> findByRoleId(Integer roleId);
     // Integer userId, String mail, String sex, String status, String userName, String userNo, Integer departId, Integer sectionId, Integer roleId, Integer duties
     @Query(value = "SELECT new com.asv.model.UserModel(t.userId, t.mail, t.sex, t.status, t.userName, t.userNo, t.departId, t.sectionId, " +
-            "t.roleId, t.duties) FROM User t where t.userId = :userId")
+            "t.roleId, t.duties, t.usingLine, t.userPost) FROM User t where t.userId = :userId")
     UserModel getUserUpdateInfo(Integer userId);
 
     @Modifying
@@ -35,7 +35,7 @@ public interface UserDao extends JpaRepository<User, Long> {
 
     // 使用的是JPQL
     @Query(value = "SELECT new com.asv.model.UserModel(t.userId, td.name, tp.name, t.icons, t.mail, " +
-            "tr.name, ts.name, t.sex, t.status, t.userName, t.userNo) " +
+            "tr.name, ts.name, t.sex, t.status, t.userName, t.userNo, t.usingLine, t.userPost) " +
             "FROM User t " +
             "LEFT JOIN Depart td ON td.id = t.departId " +
             "LEFT JOIN Section ts ON ts.id = t.sectionId " +

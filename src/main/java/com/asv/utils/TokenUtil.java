@@ -3,7 +3,10 @@ package com.asv.utils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class TokenUtil {
 
@@ -12,6 +15,16 @@ public class TokenUtil {
 
     // 1H 过期
     private static final Long expiration = 3600000L;
+
+    private static final List<String> blacklist = new ArrayList<>();
+
+    public static void invalidateToken(String token) {
+        blacklist.add(token);
+    }
+
+    public static boolean isTokenBlacklisted(String token) {
+        return blacklist.contains(token);
+    }
 
     public static String generateToken(String userId, String userName) {
         Date now = new Date();
@@ -34,6 +47,9 @@ public class TokenUtil {
     }
 
     public static boolean isTokenExpired(String token) {
+        if (isTokenBlacklisted(token)) {
+            return true;
+        }
         Claims claims = parseToken(token);
 
         Date expirationDate = claims.getExpiration();

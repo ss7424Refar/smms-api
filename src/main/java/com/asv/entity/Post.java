@@ -13,7 +13,7 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(name = "post_name")
+    @Column(name = "post_name", columnDefinition = "varchar(8)")
     private String name;
 
 }

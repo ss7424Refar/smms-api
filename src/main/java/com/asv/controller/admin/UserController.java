@@ -6,6 +6,7 @@ import com.asv.entity.User;
 import com.asv.http.ResponseResult;
 import com.asv.model.UserModel;
 import com.asv.utils.PasswordUtils;
+import com.asv.utils.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,13 +37,13 @@ public class UserController {
     @RequestMapping(value = "/add", method = RequestMethod.POST)
     // 这里需要前端传入user bean
     public String addUser(@Valid @RequestBody User user) {
-        User user1 = userDao.findByMail(user.getMail());
+        User user1 = userDao.findByUserId(user.getUserId());
 
         if (null != user1) {
-            throw new RuntimeException("邮箱输入重复, 请重新输入");
+            throw new RuntimeException("存在重复员工号");
         }
 
-        user.setIcons("default.jpg");
+        user.setIcons("default.png");
         user.setPassword(PasswordUtils.encode(user.getPassword()));
         userDao.save(user);
 
@@ -167,6 +168,28 @@ public class UserController {
         user.setIcons(fileNewName);
         userDao.saveAndFlush(user);
         return getHost(httpServletRequest) + "/image/" + fileNewName;
+    }
+
+    @RequestMapping(value = "/changePassword", method = RequestMethod.POST)
+    public String changePassword(HttpServletRequest request) {
+        String userNo1 = request.getParameter("userNo");
+        String password = request.getParameter("password");
+        String token = request.getHeader("Authorization");
+
+        User user = userDao.findByUserNo(userNo1);
+        if (user == null) {
+            throw new RuntimeException("没有该用户");
+        }
+
+        user.setPassword(PasswordUtils.encode(password));
+        userDao.saveAndFlush(user);
+
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+            TokenUtil.invalidateToken(token);
+        }
+
+        return "修改密码成功";
     }
 
     //获取URI：http://localhost:8088/uapi

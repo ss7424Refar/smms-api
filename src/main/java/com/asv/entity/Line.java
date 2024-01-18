@@ -6,14 +6,14 @@ import javax.persistence.*;
 
 @Entity
 @Data
-@Table(name = "t_depart")
-public class Depart {
+@Table(name = "t_line")
+public class Line {
     @Id
+    @Column(name = "line_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "depart_id")
     private Integer id;
 
-    @Column(name = "depart_name", columnDefinition = "varchar(8)")
+    @Column(name = "line_name", columnDefinition = "varchar(8)")
     private String name;
 
 }
